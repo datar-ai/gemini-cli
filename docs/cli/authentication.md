@@ -77,6 +77,36 @@ The Gemini CLI requires you to authenticate with Google's AI services. On initia
           echo 'export GOOGLE_GENAI_USE_VERTEXAI=true' >> ~/.bashrc
           source ~/.bashrc
           ```
+
+5.  **<a id="custom-llm"></a>Custom LLM Provider (e.g., Azure OpenAI):**
+
+    - This option allows you to connect the Gemini CLI to a custom LLM provider that is compatible with the Azure OpenAI API style.
+    - You will need to set the following environment variables:
+      - `GEMINI_AUTH_TYPE="custom-llm"`: Specifies that you want to use a custom LLM provider.
+      - `CUSTOM_LLM_ENDPOINT="YOUR_CUSTOM_LLM_ENDPOINT"`: The base endpoint for your custom LLM API. For Azure OpenAI, this would be the resource endpoint, e.g., `https://your-resource-name.openai.azure.com`. The CLI will append paths like `/openai/deployments/{deployment-id}/chat/completions?api-version={api-version}`.
+      - `CUSTOM_LLM_API_KEY="YOUR_CUSTOM_LLM_SUBSCRIPTION_KEY"`: Your API key (subscription key) for the custom LLM provider. This key will be sent in the `Ocp-Apim-Subscription-Key` header.
+      - `CUSTOM_LLM_MODEL_NAME="YOUR_DEPLOYMENT_ID"`: (Optional but Recommended) While the model/deployment ID can sometimes be part of the request payload, you can also set this environment variable to specify a default deployment ID to be used for chat completions and embeddings if not otherwise specified in the command or request. The `CustomContentGenerator` will use this as the `model` parameter in requests if no other model is specified.
+
+    - **Example temporary setup for bash/zsh:**
+      ```bash
+      export GEMINI_AUTH_TYPE="custom-llm"
+      export CUSTOM_LLM_ENDPOINT="https://your-azure-resource.openai.azure.com"
+      export CUSTOM_LLM_API_KEY="your_azure_openai_subscription_key"
+      export CUSTOM_LLM_MODEL_NAME="your_deployment_id" # e.g., gpt-35-turbo
+      ```
+    - **Example for adding to `~/.bashrc`:**
+      ```bash
+      echo 'export GEMINI_AUTH_TYPE="custom-llm"' >> ~/.bashrc
+      echo 'export CUSTOM_LLM_ENDPOINT="https://your-azure-resource.openai.azure.com"' >> ~/.bashrc
+      echo 'export CUSTOM_LLM_API_KEY="your_azure_openai_subscription_key"' >> ~/.bashrc
+      echo 'export CUSTOM_LLM_MODEL_NAME="your_deployment_id"' >> ~/.bashrc
+      source ~/.bashrc
+      ```
+    - **Important Notes:**
+      - The current implementation assumes your custom LLM API behaves similarly to Azure OpenAI's API, particularly for chat completions and embeddings.
+      - The API version used for Azure OpenAI calls is currently hardcoded (e.g., `2024-02-15-preview`). This might become configurable in the future.
+      - Token counting for custom LLMs currently uses a naive placeholder. For accurate token counts with Azure OpenAI, client-side integration with a library like `tiktoken` is recommended but not yet implemented in the CLI.
+      - The `model` parameter in requests to the `CustomContentGenerator` (e.g. via `-m` flag in CLI or in API calls) is typically used as the **deployment ID** for Azure OpenAI.
     - If using express mode:
       - Set the `GOOGLE_API_KEY` environment variable. In the following methods, replace `YOUR_GOOGLE_API_KEY` with your Vertex AI API key provided by express mode:
         - You can temporarily set these environment variables in your current shell session using the following commands:
