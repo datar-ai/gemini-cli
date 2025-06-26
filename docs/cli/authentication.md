@@ -107,6 +107,38 @@ The Gemini CLI requires you to authenticate with Google's AI services. On initia
       - The API version used for Azure OpenAI calls is currently hardcoded (e.g., `2024-02-15-preview`). This might become configurable in the future.
       - Token counting for custom LLMs currently uses a naive placeholder. For accurate token counts with Azure OpenAI, client-side integration with a library like `tiktoken` is recommended but not yet implemented in the CLI.
       - The `model` parameter in requests to the `CustomContentGenerator` (e.g. via `-m` flag in CLI or in API calls) is typically used as the **deployment ID** for Azure OpenAI.
+
+6.  **<a id="open-router"></a>OpenRouter:**
+
+    - This option allows you to connect the Gemini CLI to [OpenRouter](https://openrouter.ai/), a service that provides access to a wide variety of LLMs through a unified API.
+    - You will need to set the following environment variables:
+      - `GEMINI_AUTH_TYPE="open-router"`: Specifies that you want to use OpenRouter.
+      - `OPEN_ROUTER_API_KEY="YOUR_OPENROUTER_API_KEY"`: Your API key obtained from your OpenRouter account.
+    - You must also specify the model you wish to use with OpenRouter. This is done via the standard model flag (`-m` or `--model`) when running a command, or by setting the `GEMINI_DEFAULT_MODEL` environment variable. Example model strings include `openai/gpt-4o`, `anthropic/claude-3-opus`, `google/gemini-flash-1.5`, etc. Refer to the [OpenRouter documentation](https://openrouter.ai/docs#models) for a full list of available models.
+
+    - **Example temporary setup for bash/zsh:**
+      ```bash
+      export GEMINI_AUTH_TYPE="open-router"
+      export OPEN_ROUTER_API_KEY="sk-or-v1-abc123xyz789"
+      # Then, when running the CLI:
+      # gemini -m "anthropic/claude-3-haiku" "Summarize this document for me"
+      # Or set a default model:
+      # export GEMINI_DEFAULT_MODEL="anthropic/claude-3-haiku"
+      # gemini "Summarize this document for me"
+      ```
+    - **Example for adding to `~/.bashrc`:**
+      ```bash
+      echo 'export GEMINI_AUTH_TYPE="open-router"' >> ~/.bashrc
+      echo 'export OPEN_ROUTER_API_KEY="sk-or-v1-abc123xyz789"' >> ~/.bashrc
+      # Optionally, set a default model for OpenRouter:
+      # echo 'export GEMINI_DEFAULT_MODEL="anthropic/claude-3-haiku"' >> ~/.bashrc
+      source ~/.bashrc
+      ```
+    - **Important Notes:**
+      - The OpenRouter API endpoint (`https://openrouter.ai/api/v1`) is hardcoded in the CLI.
+      - `countTokens`: Token counting currently uses a naive placeholder. For accurate counts, client-side tokenization (e.g., with `tiktoken`) would be needed, which is not yet integrated for this provider.
+      - `embedContent`: Embeddings are not currently supported via the OpenRouter integration in the CLI, as a standard embeddings endpoint is not apparent in their primary API.
+
     - If using express mode:
       - Set the `GOOGLE_API_KEY` environment variable. In the following methods, replace `YOUR_GOOGLE_API_KEY` with your Vertex AI API key provided by express mode:
         - You can temporarily set these environment variables in your current shell session using the following commands:

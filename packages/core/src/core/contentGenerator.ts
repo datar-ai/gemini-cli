@@ -16,6 +16,7 @@ import {
 import { createCodeAssistContentGenerator } from '../code_assist/codeAssist.js';
 import { DEFAULT_GEMINI_MODEL } from '../config/models.js';
 import { CustomContentGenerator } from './customContentGenerator.js';
+import { OpenRouterContentGenerator } from './openRouterContentGenerator.js';
 import { getEffectiveModel } from './modelCheck.js';
 
 /**
@@ -40,15 +41,17 @@ export enum AuthType {
   USE_GEMINI = 'gemini-api-key',
   USE_VERTEX_AI = 'vertex-ai',
   CUSTOM_LLM = 'custom-llm',
+  OPEN_ROUTER = 'open-router',
 }
 
 export type ContentGeneratorConfig = {
-  model: string;
+  model: string; // For OpenRouter, this will be the specific model string like 'openai/gpt-4o'
   apiKey?: string; // Used for GEMINI_API_KEY or GOOGLE_API_KEY (for Vertex)
   vertexai?: boolean;
   authType?: AuthType | undefined;
   customLlmEndpoint?: string;
-  customLlmApiKey?: string; // Specifically for the custom LLM
+  customLlmApiKey?: string; // Specifically for the custom LLM (e.g. Azure)
+  openRouterApiKey?: string; // Specifically for OpenRouter
 };
 
 export async function createContentGeneratorConfig(
@@ -62,9 +65,13 @@ export async function createContentGeneratorConfig(
   const googleCloudLocation = process.env.GOOGLE_CLOUD_LOCATION;
   const customLlmEndpointEnv = process.env.CUSTOM_LLM_ENDPOINT;
   const customLlmApiKeyEnv = process.env.CUSTOM_LLM_API_KEY;
+  const openRouterApiKeyEnv = process.env.OPEN_ROUTER_API_KEY;
 
   // Use runtime model from config if available, otherwise fallback to parameter or default
-  const effectiveModel = config?.getModel?.() || model || DEFAULT_GEMINI_MODEL;
+  // For OpenRouter, `model` will be the specific model string, so DEFAULT_GEMINI_MODEL might not be appropriate
+  // if authType is OPEN_ROUTER and no model is provided by user. This needs careful handling.
+  // Let's assume for now that if authType is OPEN_ROUTER, `model` must be provided by the user.
+  const effectiveModel = config?.getModel?.() || model; // Removed DEFAULT_GEMINI_MODEL for now
 
   const contentGeneratorConfig: ContentGeneratorConfig = {
     model: effectiveModel,
@@ -115,6 +122,32 @@ export async function createContentGeneratorConfig(
     return contentGeneratorConfig;
   }
 
+  if (authType === AuthType.OPEN_ROUTER) {
+    if (!openRouterApiKeyEnv) {
+      console.warn(
+        'OPEN_ROUTER auth type selected, but OPEN_ROUTER_API_KEY environment variable is not set.',
+      );
+    }
+    if (!effectiveModel && !config?.getModel?.()) {
+      // If no model is provided via CLI arg (model) or config object (config.getModel),
+      // and we removed DEFAULT_GEMINI_MODEL, this could be an issue.
+      // OpenRouter requires a model. We should probably throw an error or have a default OpenRouter model.
+      // For now, let's log a warning. The generator itself will throw if model is missing.
+      console.warn(
+        'OPEN_ROUTER auth type selected, but no model name was provided. OpenRouter requires a model name.',
+      );
+    }
+    contentGeneratorConfig.openRouterApiKey = openRouterApiKeyEnv;
+    // `effectiveModel` (which is `model` from CLI/config or undefined) is already set.
+    // No specific model validation like getEffectiveModel for OpenRouter here.
+    return contentGeneratorConfig;
+  }
+
+  // If effectiveModel is still undefined here (e.g. not CUSTOM_LLM or OPEN_ROUTER and no model provided)
+  // assign the default. This was previously done at the top.
+  if (!contentGeneratorConfig.model) {
+    contentGeneratorConfig.model = DEFAULT_GEMINI_MODEL;
+  }
   return contentGeneratorConfig;
 }
 
@@ -154,6 +187,20 @@ export async function createContentGenerator(
       config.customLlmEndpoint,
       config.customLlmApiKey,
     );
+  }
+
+  if (config.authType === AuthType.OPEN_ROUTER) {
+    if (!config.openRouterApiKey) {
+      // This check might be redundant if createContentGeneratorConfig already warns,
+      // but good for safety. Or createContentGeneratorConfig could throw.
+      throw new Error(
+        'OpenRouter API key is not configured. Please set the OPEN_ROUTER_API_KEY environment variable.',
+      );
+    }
+    // Note: config.model is expected to be populated by createContentGeneratorConfig
+    // with the user-specified OpenRouter model string.
+    // The OpenRouterContentGenerator itself will validate if config.model is provided.
+    return new OpenRouterContentGenerator(config.openRouterApiKey);
   }
 
   throw new Error(

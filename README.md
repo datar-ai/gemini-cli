@@ -56,11 +56,13 @@ For other authentication methods, including Google Workspace accounts, see the [
 The Gemini CLI can also be configured to connect to a custom LLM provider, particularly useful if you have an existing setup like Azure OpenAI. This allows you to leverage your own LLM resources while using the Gemini CLI interface.
 
 To use a custom LLM provider, you'll need to set a few environment variables:
-- `GEMINI_AUTH_TYPE="custom-llm"`
-- `CUSTOM_LLM_ENDPOINT="YOUR_CUSTOM_LLM_ENDPOINT"` (e.g., your Azure OpenAI resource endpoint)
-- `CUSTOM_LLM_API_KEY="YOUR_CUSTOM_LLM_SUBSCRIPTION_KEY"`
+- `GEMINI_AUTH_TYPE="custom-llm"` (for Azure OpenAI style APIs)
+  - `CUSTOM_LLM_ENDPOINT="YOUR_CUSTOM_LLM_ENDPOINT"`
+  - `CUSTOM_LLM_API_KEY="YOUR_CUSTOM_LLM_SUBSCRIPTION_KEY"`
+- `GEMINI_AUTH_TYPE="open-router"` (for OpenRouter.ai)
+  - `OPEN_ROUTER_API_KEY="YOUR_OPENROUTER_API_KEY"`
 
-For detailed instructions on configuring a custom LLM provider, including additional options and important considerations, please refer to the [Custom LLM Provider section in the authentication guide](./docs/cli/authentication.md#custom-llm).
+For detailed instructions on configuring these and other authentication methods, including how to specify models for OpenRouter, please refer to the [authentication guide](./docs/cli/authentication.md).
 
 ## Examples
 
