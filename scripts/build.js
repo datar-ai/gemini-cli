@@ -7,7 +7,6 @@
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
-// You may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
@@ -38,14 +37,15 @@ execSync('npm run build --workspaces', { stdio: 'inherit', cwd: root });
 // also build container image if sandboxing is enabled
 // skip (-s) npm install + build since we did that above
 try {
-  execSync('node scripts/sandbox_command.js -q', {
-    stdio: 'inherit',
-    cwd: root,
-  });
   if (
     process.env.BUILD_SANDBOX === '1' ||
     process.env.BUILD_SANDBOX === 'true'
   ) {
+    // Only execute sandbox_command.js if sandboxing is enabled
+    execSync('node scripts/sandbox_command.js -q', {
+      stdio: 'ignore', // Use 'ignore' to prevent potential hangs related to stdio inheritance
+      cwd: root,
+    });
     execSync('node scripts/build_sandbox.js -s', {
       stdio: 'inherit',
       cwd: root,
@@ -54,3 +54,5 @@ try {
 } catch {
   // ignore
 }
+
+process.exit(0); // Force exit to prevent hang
