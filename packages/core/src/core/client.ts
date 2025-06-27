@@ -13,7 +13,6 @@ import {
   Content,
   Tool,
   GenerateContentResponse,
-  ContentEmbedding, // Import ContentEmbedding
 } from '@google/genai';
 import { getFolderStructure } from '../utils/getFolderStructure.js';
 import {
@@ -416,7 +415,7 @@ export class GeminiClient {
       );
     }
 
-    return embedContentResponse.embeddings.map((embedding: ContentEmbedding, index: number) => {
+    return embedContentResponse.embeddings.map((embedding, index) => {
       const values = embedding.values;
       if (!values || values.length === 0) {
         throw new Error(

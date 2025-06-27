@@ -35,5 +35,23 @@ export const validateAuthMethod = (authMethod: string): string | null => {
     return null;
   }
 
-  return 'Invalid auth method selected.';
+  if (authMethod === AuthType.CUSTOM_LLM) {
+    if (!process.env.CUSTOM_LLM_ENDPOINT) {
+      return 'CUSTOM_LLM_ENDPOINT environment variable not found. Add that to your .env and try again, no reload needed!';
+    }
+    if (!process.env.CUSTOM_LLM_API_KEY) {
+      return 'CUSTOM_LLM_API_KEY environment variable not found. Add that to your .env and try again, no reload needed!';
+    }
+    return null;
+  }
+
+  if (authMethod === AuthType.OPEN_ROUTER) {
+    if (!process.env.OPEN_ROUTER_API_KEY) {
+      return 'OPEN_ROUTER_API_KEY environment variable not found. Add that to your .env and try again, no reload needed!';
+    }
+    // Model for OpenRouter is specified via -m flag or GEMINI_DEFAULT_MODEL, not a strict auth validation here.
+    return null;
+  }
+
+  return `Invalid auth method selected: ${authMethod}. Please check your configuration or GEMINI_AUTH_TYPE environment variable.`;
 };

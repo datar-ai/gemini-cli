@@ -12,22 +12,7 @@ import {
   EmbedContentResponse,
   EmbedContentParameters,
   GoogleGenAI,
-  Content, // Keep Content import if it's directly exported
-  Part, // Keep Part import if it's directly exported
 } from '@google/genai';
-
-// Re-export these types so other modules can import them from here
-export {
-  CountTokensResponse,
-  GenerateContentResponse,
-  GenerateContentParameters,
-  CountTokensParameters,
-  EmbedContentResponse,
-  EmbedContentParameters,
-  GoogleGenAI,
-  Content, // Re-export Content
-  Part, // Re-export Part
-};
 import { createCodeAssistContentGenerator } from '../code_assist/codeAssist.js';
 import { DEFAULT_GEMINI_MODEL } from '../config/models.js';
 import { CustomContentGenerator } from './customContentGenerator.js';
@@ -86,7 +71,7 @@ export async function createContentGeneratorConfig(
   // For OpenRouter, `model` will be the specific model string, so DEFAULT_GEMINI_MODEL might not be appropriate
   // if authType is OPEN_ROUTER and no model is provided by user. This needs careful handling.
   // Let's assume for now that if authType is OPEN_ROUTER, `model` must be provided by the user.
-  const effectiveModel = config?.getModel?.() || model || DEFAULT_GEMINI_MODEL;
+  const effectiveModel = config?.getModel?.() || model; // Removed DEFAULT_GEMINI_MODEL for now
 
   const contentGeneratorConfig: ContentGeneratorConfig = {
     model: effectiveModel,

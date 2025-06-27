@@ -12,19 +12,7 @@ import {
   CountTokensResponse,
   EmbedContentParameters,
   EmbedContentResponse,
-  Content, // Now re-exported from contentGenerator.js
-  Part, // Now re-exported from contentGenerator.js
 } from './contentGenerator.js';
-
-// TextPart is not re-exported from contentGenerator.js, so keep its local definition
-interface TextPart {
-  text: string;
-}
-
-interface AzureMessage {
-  role: 'user' | 'assistant' | 'tool';
-  content: string;
-}
 
 export class CustomContentGenerator implements ContentGenerator {
   constructor(
@@ -54,30 +42,14 @@ export class CustomContentGenerator implements ContentGenerator {
   // Helper to map @google/genai Content to Azure OpenAI Message format
   private mapToAzureMessages(
     contents: GenerateContentParameters['contents'],
-  ): AzureMessage[] {
-    const contentArray: Content[] = typeof contents === 'string'
-      ? [{ parts: [{ text: contents }], role: 'user' }]
-      : contents as Content[]; // Explicitly cast to Content[]
-
+  ): any[] {
     // TODO: More robust mapping, handle different part types (e.g. FunctionCallPart, FileDataPart)
-    return contentArray.map((content: Content) => {
+    return contents.map((content) => {
       const partsText = content.parts
-        ?.map((part: Part) => ('text' in part ? (part as TextPart).text : '')) // Add null check for content.parts
-        .join(' ') || ''; // Ensure partsText is always a string
-
-      let role: 'user' | 'assistant' | 'tool';
-      if (content.role === 'model') {
-        role = 'assistant';
-      } else if (content.role === 'user') {
-        role = 'user';
-      } else if (content.role === 'tool') {
-        role = 'tool';
-      } else {
-        role = 'user'; // Default role
-      }
-
+        .map((part) => ('text' in part ? part.text : ''))
+        .join(' ');
       return {
-        role,
+        role: content.role === 'model' ? 'assistant' : content.role,
         content: partsText,
       };
     });
@@ -130,11 +102,6 @@ export class CustomContentGenerator implements ContentGenerator {
           // TODO: Map other fields like index, citationMetadata, safetyRatings
         },
       ],
-      text: firstChoice.message?.content || '', // Ensure text is string
-      data: undefined, // Set to undefined if optional
-      functionCalls: undefined, // Set to undefined if optional
-      executableCode: undefined, // Set to undefined if optional
-      codeExecutionResult: undefined, // Set to undefined if optional
       // TODO: Map promptFeedback, usageMetadata
     };
   }
@@ -212,23 +179,16 @@ export class CustomContentGenerator implements ContentGenerator {
                       // index: firstChoice.index, // Usually 0 for streaming delta
                     },
                   ],
-                  text: firstChoice.delta.content || '', // Ensure text is string
-                  data: undefined, // Set to undefined if optional
-                  functionCalls: undefined, // Set to undefined if optional
-                  executableCode: undefined, // Set to undefined if optional
-                  codeExecutionResult: undefined, // Set to undefined if optional
                 };
               } else if (firstChoice?.finish_reason) {
+                 // Sometimes finish_reason comes in a separate chunk
+                 // This part might need more sophisticated state management if we want to
+                 // merge it with the last content chunk. For now, yielding it if it's the main info.
                  yield {
                    candidates: [{
                      content: { role: 'model', parts: []}, // No new content
                      finishReason: firstChoice.finish_reason,
-                   }],
-                   text: '', // Ensure text is string
-                   data: undefined, // Set to undefined if optional
-                   functionCalls: undefined, // Set to undefined if optional
-                   executableCode: undefined, // Set to undefined if optional
-                   codeExecutionResult: undefined, // Set to undefined if optional
+                   }]
                  }
               }
             } catch (e) {
@@ -251,13 +211,9 @@ export class CustomContentGenerator implements ContentGenerator {
     console.warn(
       'CustomContentGenerator.countTokens is using a naive placeholder. For accurate token counting for Azure OpenAI, consider integrating a library like tiktoken.',
     );
-    const contentArray: Content[] = typeof request.contents === 'string'
-      ? [{ parts: [{ text: request.contents }], role: 'user' }]
-      : request.contents as Content[]; // Explicitly cast to Content[]
-
-    const textContent = contentArray
-      .flatMap((content: Content) => content.parts || []) // Add null check for content.parts
-      .map((part: Part) => ('text' in part ? (part as TextPart).text : '')) // Cast to TextPart
+    const textContent = request.contents
+      .flatMap((content) => content.parts)
+      .map((part) => ('text' in part ? part.text : ''))
       .join(' ');
     // Super naive: split by space. Real tokenization is much more complex.
     return { totalTokens: textContent.split(/\s+/).length };
@@ -282,20 +238,18 @@ export class CustomContentGenerator implements ContentGenerator {
     // but the request in `customContentGenerator` is `EmbedContentParameters` from `@google/genai` which is
     // `contents: Content[]` where `Content` is `{ parts: Part[], role?: string }`.
     // This mapping needs clarification. For now, let's assume we take the first text part of each content.
-    const contentArray: Content[] = typeof request.contents === 'string'
-      ? [{ parts: [{ text: request.contents }], role: 'user' }]
-      : request.contents as Content[]; // Explicitly cast to Content[]
 
-    if (contentArray.length === 0) {
+    if (request.contents.length === 0) {
       return { embeddings: [] };
     }
 
     // For simplicity, let's assume the input is a single string for now,
     // taken from the first text part of the first content object.
     // A robust implementation would handle multiple inputs and batching if the API supports it.
-    const inputText = contentArray[0]?.parts // contentArray[0] can be undefined
-      ?.filter((part: Part) => 'text' in part) // Add null check for parts
-      .map((part: Part) => ('text' in part ? (part as TextPart).text : '')) // Cast to TextPart and handle undefined text
+    const inputText = request.contents[0]?.parts
+      .filter(part => 'text' in part)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map(part => (part as any).text)
       .join(' ');
 
     if (!inputText) {

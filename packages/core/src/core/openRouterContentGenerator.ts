@@ -12,19 +12,7 @@ import {
   CountTokensResponse,
   EmbedContentParameters,
   EmbedContentResponse,
-  Content, // Now re-exported from contentGenerator.js
-  Part, // Now re-exported from contentGenerator.js
 } from './contentGenerator.js';
-
-// TextPart is not re-exported from contentGenerator.js, so keep its local definition
-interface TextPart {
-  text: string;
-}
-
-interface OpenAiMessage {
-  role: 'user' | 'assistant' | 'tool';
-  content: string;
-}
 
 // TODO: Consider adding optional support for HTTP-Referer and X-Title headers via config.
 
@@ -52,31 +40,15 @@ export class OpenRouterContentGenerator implements ContentGenerator {
   // Helper to map @google/genai Content to OpenAI/OpenRouter Message format
   private mapToOpenAiMessages(
     contents: GenerateContentParameters['contents'],
-  ): OpenAiMessage[] {
-    const contentArray: Content[] = typeof contents === 'string'
-      ? [{ parts: [{ text: contents }], role: 'user' }]
-      : contents as Content[]; // Explicitly cast to Content[]
-
+  ): any[] {
     // TODO: More robust mapping, handle different part types (e.g. FunctionCallPart, FileDataPart)
     // This mapping is similar to the one used for Azure OpenAI
-    return contentArray.map((content: Content) => {
+    return contents.map((content) => {
       const partsText = content.parts
-        ?.map((part: Part) => ('text' in part ? (part as TextPart).text : '')) // Add null check for content.parts
-        .join(' ') || ''; // Ensure partsText is always a string
-
-      let role: 'user' | 'assistant' | 'tool';
-      if (content.role === 'model') {
-        role = 'assistant';
-      } else if (content.role === 'user') {
-        role = 'user';
-      } else if (content.role === 'tool') {
-        role = 'tool';
-      } else {
-        role = 'user'; // Default role
-      }
-
+        .map((part) => ('text' in part ? part.text : ''))
+        .join(' ');
       return {
-        role,
+        role: content.role === 'model' ? 'assistant' : content.role,
         content: partsText,
       };
     });
@@ -134,11 +106,6 @@ export class OpenRouterContentGenerator implements ContentGenerator {
           finishReason: firstChoice.finish_reason,
         },
       ],
-      text: firstChoice.message?.content || '', // Ensure text is string
-      data: undefined, // Set to undefined if optional
-      functionCalls: undefined, // Set to undefined if optional
-      executableCode: undefined, // Set to undefined if optional
-      codeExecutionResult: undefined, // Set to undefined if optional
     };
   }
 
@@ -218,23 +185,13 @@ export class OpenRouterContentGenerator implements ContentGenerator {
                       finishReason: firstChoice.finish_reason,
                     },
                   ],
-                  text: firstChoice.delta.content || '', // Ensure text is string
-                  data: undefined, // Set to undefined if optional
-                  functionCalls: undefined, // Set to undefined if optional
-                  executableCode: undefined, // Set to undefined if optional
-                  codeExecutionResult: undefined, // Set to undefined if optional
                 };
               } else if (firstChoice?.finish_reason) {
                  yield {
                    candidates: [{
                      content: { role: 'model', parts: []},
                      finishReason: firstChoice.finish_reason,
-                   }],
-                   text: '', // Ensure text is string
-                   data: undefined, // Set to undefined if optional
-                   functionCalls: undefined, // Set to undefined if optional
-                   executableCode: undefined, // Set to undefined if optional
-                   codeExecutionResult: undefined, // Set to undefined if optional
+                   }]
                  }
               }
             } catch (e) {
@@ -256,13 +213,9 @@ export class OpenRouterContentGenerator implements ContentGenerator {
     console.warn(
       'OpenRouterContentGenerator.countTokens is using a naive placeholder. For accurate token counting, consider client-side tokenization.',
     );
-    const contentArray: Content[] = typeof request.contents === 'string'
-      ? [{ parts: [{ text: request.contents }], role: 'user' }]
-      : request.contents as Content[]; // Explicitly cast to Content[]
-
-    const textContent = contentArray
-      .flatMap((content: Content) => content.parts || []) // Add null check for content.parts
-      .map((part: Part) => ('text' in part ? (part as TextPart).text : '')) // Cast to TextPart
+    const textContent = request.contents
+      .flatMap((content) => content.parts)
+      .map((part) => ('text' in part ? part.text : ''))
       .join(' ');
     return { totalTokens: textContent.split(/\s+/).length }; // Extremely naive
   }
